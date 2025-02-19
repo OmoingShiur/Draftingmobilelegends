@@ -1,13 +1,33 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { DiscIcon, Link, Clock } from "lucide-react"
-import { SearchBar } from "@/components/search-bar"
+import { DiscIcon, Link } from "lucide-react"
 import { ChampionGrid } from "@/components/champion-grid"
+import { Timer } from "@/components/timer"
+import { champions } from "@/data/champions"
+
+type PickSlot = {
+  position: string
+  championId: string | null
+}
 
 export default function DraftingPage() {
   const [inviteLink, setInviteLink] = useState("")
+  const [picks, setPicks] = useState<PickSlot[]>([
+    { position: "B1", championId: null },
+    { position: "B2", championId: null },
+    { position: "B3", championId: null },
+    { position: "B4", championId: null },
+    { position: "B5", championId: null },
+    { position: "R1", championId: null },
+    { position: "R2", championId: null },
+    { position: "R3", championId: null },
+    { position: "R4", championId: null },
+    { position: "R5", championId: null },
+  ])
+  const [selectedChampion, setSelectedChampion] = useState<string | null>(null)
 
   const handleDiscordClick = () => {
     window.open("https://discord.gg/your-invite-link", "_blank")
@@ -20,8 +40,27 @@ export default function DraftingPage() {
     alert(`Invite link generated and copied to clipboard: ${newInviteLink}`)
   }
 
-  const handleSetTimer = () => {
-    alert("Timer setting functionality to be implemented")
+  const handleChampionSelect = (championId: string) => {
+    setSelectedChampion(championId)
+  }
+
+  const handleLockIn = () => {
+    if (selectedChampion) {
+      const nextEmptySlot = picks.find((pick) => pick.championId === null)
+      if (nextEmptySlot) {
+        setPicks(
+          picks.map((pick) =>
+            pick.position === nextEmptySlot.position ? { ...pick, championId: selectedChampion } : pick,
+          ),
+        )
+        setSelectedChampion(null)
+      }
+    }
+  }
+
+  const handleResetDraft = () => {
+    setPicks(picks.map((pick) => ({ ...pick, championId: null })))
+    setSelectedChampion(null)
   }
 
   return (
@@ -32,14 +71,11 @@ export default function DraftingPage() {
           <Button variant="ghost" size="icon" className="text-white" onClick={handleDiscordClick}>
             <DiscIcon className="w-6 h-6" />
           </Button>
-          <div className="text-center">
+          <div className="text-center flex-grow">
             <h1 className="text-2xl font-bold">Drafting</h1>
             <h2 className="text-xl">Mobile Legends</h2>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="text-white" onClick={handleSetTimer}>
-              <Clock className="w-6 h-6" />
-            </Button>
             <Button variant="ghost" size="icon" className="text-white" onClick={handleGenerateInvite}>
               <Link className="w-6 h-6" />
             </Button>
@@ -51,6 +87,14 @@ export default function DraftingPage() {
 
         {/* Main Content */}
         <main className="flex-1 container mx-auto p-4">
+          {/* Timer and Reset Draft */}
+          <div className="flex justify-center items-center mb-4 space-x-4">
+            <Button variant="outline" size="sm" onClick={handleResetDraft}>
+              Reset Draft
+            </Button>
+            <Timer initialTime={60} />
+          </div>
+
           {/* Draft Area */}
           <div className="flex gap-4">
             {/* Blue Side */}
@@ -61,18 +105,30 @@ export default function DraftingPage() {
                   <div key={`blue-ban-${i}`} className="w-8 h-8 bg-gray-700 rounded-md"></div>
                 ))}
               </div>
-              {["B1", "B2", "B3", "B4", "B5"].map((pick) => (
-                <div key={pick} className="flex items-center justify-between">
-                  <span className="font-bold text-blue-400">{pick}</span>
-                  <div className="w-16 h-16 bg-gray-700 rounded-lg"></div>
+              {picks.slice(0, 5).map((pick) => (
+                <div key={pick.position} className="flex items-center space-x-2">
+                  <span className="font-bold text-blue-400 w-8">{pick.position}</span>
+                  <div className="w-16 h-16 bg-gray-700 rounded-lg overflow-hidden">
+                    {pick.championId && (
+                      <Image
+                        src={champions.find((c) => c.id === pick.championId)?.image || "/placeholder.svg"}
+                        alt={champions.find((c) => c.id === pick.championId)?.name || ""}
+                        width={64}
+                        height={64}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
 
             {/* Champion Pool */}
-            <div className="w-1/2">
-              <SearchBar />
-              <ChampionGrid />
+            <div className="w-1/2 flex flex-col">
+              <ChampionGrid onChampionSelect={handleChampionSelect} />
+              <Button onClick={handleLockIn} disabled={!selectedChampion} className="mt-4 w-full">
+                Lock In
+              </Button>
             </div>
 
             {/* Red Side */}
@@ -83,10 +139,20 @@ export default function DraftingPage() {
                   <div key={`red-ban-${i}`} className="w-8 h-8 bg-gray-700 rounded-md"></div>
                 ))}
               </div>
-              {["R1", "R2", "R3", "R4", "R5"].map((pick) => (
-                <div key={pick} className="flex items-center justify-between">
-                  <div className="w-16 h-16 bg-gray-700 rounded-lg"></div>
-                  <span className="font-bold text-red-400">{pick}</span>
+              {picks.slice(5).map((pick) => (
+                <div key={pick.position} className="flex items-center space-x-2 justify-end">
+                  <div className="w-16 h-16 bg-gray-700 rounded-lg overflow-hidden">
+                    {pick.championId && (
+                      <Image
+                        src={champions.find((c) => c.id === pick.championId)?.image || "/placeholder.svg"}
+                        alt={champions.find((c) => c.id === pick.championId)?.name || ""}
+                        width={64}
+                        height={64}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
+                  <span className="font-bold text-red-400 w-8">{pick.position}</span>
                 </div>
               ))}
             </div>
